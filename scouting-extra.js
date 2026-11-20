@@ -187,17 +187,56 @@
         return d;
     }
 
+    // 過去に取り込んだCadenceデータから自動生成された不要な「■概要」を除去し、本来の見出しに統合する
+    function ensureCadencePageClean(cp) {
+        if (!cp || typeof cp !== 'object') return cp;
+        if (Array.isArray(cp.items)) {
+            while (cp.items.length > 0 && cp.items[0] && cp.items[0].heading === '■概要') {
+                const firstBody = String(cp.items[0].body || '').trim();
+                if (cp.items.length > 1 || /Cadence/i.test(firstBody)) {
+                    if (firstBody) {
+                        const curHead = String(cp.headline || '').trim();
+                        if (!curHead) {
+                            cp.headline = firstBody;
+                        } else if (!curHead.includes(firstBody)) {
+                            cp.headline = curHead + '\n' + firstBody;
+                        }
+                    }
+                    cp.items.shift();
+                } else {
+                    cp.items[0].heading = '';
+                    break;
+                }
+            }
+            cp.items.forEach(it => {
+                if (it && it.heading === '■概要') {
+                    it.heading = '';
+                }
+            });
+        }
+        if (Array.isArray(cp.pages)) {
+            cp.pages.forEach(ensureCadencePageClean);
+        }
+        return cp;
+    }
+
     function getExtraData(publishedExtra) {
         const base = clone(DEFAULT_EXTRA);
         const saved = publishedExtra !== undefined ? publishedExtra : readRawExtra();
         if (!saved) return base;
         const rawDiagrams = Array.isArray(saved.playDiagrams) ? saved.playDiagrams : (base.playDiagrams || []);
+        const rawCadence = ensureCadencePageClean(saved.cadence || base.cadence);
+        const rawCadencePages = (Array.isArray(saved.cadencePages) ? saved.cadencePages : (saved.cadence?.pages || [])).map(ensureCadencePageClean);
+        if (rawCadencePages.length > 0 && rawCadence) {
+            rawCadence.headline = rawCadencePages[0].headline;
+            rawCadence.items = rawCadencePages[0].items;
+        }
         return {
             opponent: saved.opponent || base.opponent,
             pdfFileName: saved.pdfFileName || null,
             memberList: saved.memberList || base.memberList,
-            cadence: saved.cadence || base.cadence,
-            cadencePages: Array.isArray(saved.cadencePages) ? saved.cadencePages : (saved.cadence?.pages || []),
+            cadence: rawCadence,
+            cadencePages: rawCadencePages,
             playDiagrams: rawDiagrams.map(ensureDiagramMeta),
             updatedAt: saved.updatedAt || null
         };
@@ -1092,6 +1131,7 @@
                 const items = [];
                 let cur = null;
                 let prevTop = 0;
+                const hasBulletItems = lines.some(l => /^[■◼▪●・【]/.test(l.plain));
                 for (let i = 0; i < lines.length; i++) {
                     const ln = lines[i];
                     if (/^[■◼▪●・【]/.test(ln.plain)) {
@@ -1099,10 +1139,10 @@
                         items.push(cur);
                     } else {
                         if (!cur) {
-                            if (!headline) {
-                                headline = ln.text;
+                            if (!headline || hasBulletItems || ln.fontSize >= 18 || /^Cadence/i.test(ln.plain)) {
+                                headline = headline ? (headline + '\n' + ln.text) : ln.text;
                             } else {
-                                cur = { heading: '■概要', bodyLines: [] };
+                                cur = { heading: '', bodyLines: [] };
                                 items.push(cur);
                             }
                         }
