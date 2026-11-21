@@ -234,10 +234,13 @@
         const isOrangeTeam = /orange|hosei|法政/i.test(saved.opponent || '') ||
             /orange|hosei|法政/i.test(saved.pdfFileName || '') ||
             (Array.isArray(rawMemberList?.offRows) && rawMemberList.offRows.some(row =>
-                Array.isArray(row) && row.some(c => /大場|菊池|黒川|江渕/.test(c?.name || ''))
+                Array.isArray(row) && row.some(c =>
+                    /大場|⼤場|菊池|黒川|黑川|⿊川|安藤|金田|⾦⽥|江渕|脇田/.test(String(c?.name || '').normalize('NFKC')) ||
+                    (String(c?.num || '').trim() === '77' && String(c?.pos || '').trim() === 'LT')
+                )
             ));
-        if (isOrangeTeam && rawMemberList && (!rawMemberList.numColor || rawMemberList.numColor === '#0432ff')) {
-            rawMemberList.numColor = '#e57229';
+        if (isOrangeTeam && rawMemberList) {
+            rawMemberList.numColor = '#e97132';
         }
         const rawDiagrams = Array.isArray(saved.playDiagrams) ? saved.playDiagrams : (base.playDiagrams || []);
         const rawCadence = ensureCadencePageClean(saved.cadence || base.cadence, isOrangeTeam);
