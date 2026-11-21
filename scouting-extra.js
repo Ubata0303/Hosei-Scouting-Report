@@ -188,7 +188,7 @@
     }
 
     // 過去に取り込んだCadenceデータから自動生成された不要な「■概要」を除去し、本来の見出しに統合する
-    function ensureCadencePageClean(cp) {
+    function ensureCadencePageClean(cp, isOrangeTeam) {
         if (!cp || typeof cp !== 'object') return cp;
         if (Array.isArray(cp.items)) {
             while (cp.items.length > 0 && cp.items[0] && cp.items[0].heading === '■概要') {
@@ -212,10 +212,16 @@
                 if (it && it.heading === '■概要') {
                     it.heading = '';
                 }
+                if (isOrangeTeam && it && typeof it.body === 'string') {
+                    it.body = it.body.replace(/\{red:/g, '{orange:');
+                }
             });
         }
+        if (isOrangeTeam && typeof cp.headline === 'string') {
+            cp.headline = cp.headline.replace(/\{red:/g, '{orange:');
+        }
         if (Array.isArray(cp.pages)) {
-            cp.pages.forEach(ensureCadencePageClean);
+            cp.pages.forEach(p => ensureCadencePageClean(p, isOrangeTeam));
         }
         return cp;
     }
@@ -224,9 +230,18 @@
         const base = clone(DEFAULT_EXTRA);
         const saved = publishedExtra !== undefined ? publishedExtra : readRawExtra();
         if (!saved) return base;
+        const rawMemberList = saved.memberList || base.memberList;
+        const isOrangeTeam = /orange|hosei|法政/i.test(saved.opponent || '') ||
+            /orange|hosei|法政/i.test(saved.pdfFileName || '') ||
+            (Array.isArray(rawMemberList?.offRows) && rawMemberList.offRows.some(row =>
+                Array.isArray(row) && row.some(c => /大場|菊池|黒川|江渕/.test(c?.name || ''))
+            ));
+        if (isOrangeTeam && rawMemberList && (!rawMemberList.numColor || rawMemberList.numColor === '#0432ff')) {
+            rawMemberList.numColor = '#e57229';
+        }
         const rawDiagrams = Array.isArray(saved.playDiagrams) ? saved.playDiagrams : (base.playDiagrams || []);
-        const rawCadence = ensureCadencePageClean(saved.cadence || base.cadence);
-        const rawCadencePages = (Array.isArray(saved.cadencePages) ? saved.cadencePages : (saved.cadence?.pages || [])).map(ensureCadencePageClean);
+        const rawCadence = ensureCadencePageClean(saved.cadence || base.cadence, isOrangeTeam);
+        const rawCadencePages = (Array.isArray(saved.cadencePages) ? saved.cadencePages : (saved.cadence?.pages || [])).map(p => ensureCadencePageClean(p, isOrangeTeam));
         if (rawCadencePages.length > 0 && rawCadence) {
             rawCadence.headline = rawCadencePages[0].headline;
             rawCadence.items = rawCadencePages[0].items;
@@ -234,7 +249,7 @@
         return {
             opponent: saved.opponent || base.opponent,
             pdfFileName: saved.pdfFileName || null,
-            memberList: saved.memberList || base.memberList,
+            memberList: rawMemberList,
             cadence: rawCadence,
             cadencePages: rawCadencePages,
             playDiagrams: rawDiagrams.map(ensureDiagramMeta),
@@ -947,27 +962,71 @@
                     result.memberList = result.memberList || clone(getExtraData().memberList);
                     result.memberList.offRows = offRows;
                 }
-                // PDF内の背番号色（赤 vs 青）を自動検出
+                // PDF内の背番号色（青・赤・オレンジなど全色対応）をCanvasピクセルから直接自動検出
                 try {
-                    const opList = await page.getOperatorList();
-                    let redCount = 0;
-                    let blueCount = 0;
-                    for (let i = 0; i < opList.fnArray.length; i++) {
-                        const fn = opList.fnArray[i];
-                        const args = opList.argsArray[i];
-                        if ((fn === pdfjsLib.OPS.setFillRGBColor || fn === pdfjsLib.OPS.setFillColorN) && args && args.length >= 3) {
-                            const r = args[0] <= 1 ? args[0] : args[0] / 255;
-                            const g = args[1] <= 1 ? args[1] : args[1] / 255;
-                            const b = args[2] <= 1 ? args[2] : args[2] / 255;
-                            if (r > 0.6 && g < 0.25 && b < 0.25) redCount++;
-                            if (b > 0.6 && r < 0.25 && g < 0.35) blueCount++;
+                    result.memberList = result.memberList || clone(getExtraData().memberList);
+                    const mlScale = 1.5;
+                    const mlViewport = page.getViewport({ scale: mlScale });
+                    const mlCanvas = document.createElement('canvas');
+                    mlCanvas.width = Math.round(mlViewport.width);
+                    mlCanvas.height = Math.round(mlViewport.height);
+                    const mlCtx = mlCanvas.getContext('2d', { willReadFrequently: true });
+                    mlCtx.fillStyle = '#ffffff';
+                    mlCtx.fillRect(0, 0, mlCanvas.width, mlCanvas.height);
+                    await page.render({ canvasContext: mlCtx, viewport: mlViewport }).promise;
+
+                    const numToks = tokens.filter(t => t.top >= 55 && t.top <= 520 && /^\d{1,2}$/.test(t.text) && t.fontSize >= 18);
+                    let sumR = 0, sumG = 0, sumB = 0, coloredCount = 0;
+
+                    for (const nt of numToks) {
+                        const sx = Math.max(0, Math.min(mlCanvas.width - 2, Math.round(nt.x * mlScale)));
+                        const sy = Math.max(0, Math.min(mlCanvas.height - 2, Math.round((nt.top - nt.fontSize * 0.9) * mlScale)));
+                        const sw = Math.max(4, Math.min(mlCanvas.width - sx, Math.round((nt.width || nt.fontSize) * mlScale)));
+                        const sh = Math.max(4, Math.min(mlCanvas.height - sy, Math.round(nt.fontSize * 1.1 * mlScale)));
+                        const data = mlCtx.getImageData(sx, sy, sw, sh).data;
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+                            if (a < 128) continue;
+                            const maxC = Math.max(r, g, b);
+                            const minC = Math.min(r, g, b);
+                            // 白背景・グレー・黒枠線を除外し、彩度のある背番号ピクセルのみ集計
+                            if (maxC > 75 && (maxC - minC) >= 40 && !(r > 235 && g > 235 && b > 235)) {
+                                sumR += r;
+                                sumG += g;
+                                sumB += b;
+                                coloredCount++;
+                            }
                         }
                     }
-                    result.memberList = result.memberList || clone(getExtraData().memberList);
-                    if (redCount > blueCount && redCount >= 3) {
-                        result.memberList.numColor = '#c00000';
-                    } else if (blueCount > redCount && blueCount >= 3) {
-                        result.memberList.numColor = '#0432ff';
+
+                    if (coloredCount >= 10) {
+                        const avgR = Math.round(sumR / coloredCount);
+                        const avgG = Math.round(sumG / coloredCount);
+                        const avgB = Math.round(sumB / coloredCount);
+                        const toHex = n => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0');
+                        result.memberList.numColor = `#${toHex(avgR)}${toHex(avgG)}${toHex(avgB)}`;
+                    } else {
+                        const opList = await page.getOperatorList();
+                        let redCount = 0, blueCount = 0, orangeCount = 0;
+                        for (let i = 0; i < opList.fnArray.length; i++) {
+                            const fn = opList.fnArray[i];
+                            const args = opList.argsArray[i];
+                            if ((fn === pdfjsLib.OPS.setFillRGBColor || fn === pdfjsLib.OPS.setFillColorN) && args && args.length >= 3) {
+                                const r = args[0] <= 1 ? args[0] : args[0] / 255;
+                                const g = args[1] <= 1 ? args[1] : args[1] / 255;
+                                const b = args[2] <= 1 ? args[2] : args[2] / 255;
+                                if (r > 0.65 && g >= 0.3 && g <= 0.65 && b < 0.3) orangeCount++;
+                                else if (r > 0.6 && g < 0.25 && b < 0.25) redCount++;
+                                else if (b > 0.6 && r < 0.25 && g < 0.35) blueCount++;
+                            }
+                        }
+                        if (orangeCount >= 3 && orangeCount >= redCount && orangeCount >= blueCount) {
+                            result.memberList.numColor = '#e57229';
+                        } else if (redCount > blueCount && redCount >= 3) {
+                            result.memberList.numColor = '#c00000';
+                        } else if (blueCount > redCount && blueCount >= 3) {
+                            result.memberList.numColor = '#0432ff';
+                        }
                     }
                 } catch (_) {}
             }
@@ -1027,6 +1086,7 @@
                         const imgData = cadCtx.getImageData(sx, sy, sw, sh).data;
 
                         let redCount = 0;
+                        let orangeCount = 0;
                         let blueCount = 0;
                         let darkPixels = 0;
 
@@ -1035,8 +1095,12 @@
                             // 白背景を除外
                             if (a > 80 && (r < 235 || g < 235 || b < 235)) {
                                 darkPixels++;
+                                // オレンジ系（法政オレンジ等: Rが高くGが中間、Bが低い）
+                                if (r > 160 && g >= 75 && g <= 175 && b < 85 && (r - g) > 35 && (g - b) > 30) {
+                                    orangeCount++;
+                                }
                                 // 赤系（PowerPoint標準赤 rgb(255,0,0) や クリムゾン等）
-                                if (r > 130 && (r - g) > 35 && (r - b) > 35) {
+                                else if (r > 130 && (r - g) > 35 && (r - b) > 35) {
                                     redCount++;
                                 }
                                 // 青系
@@ -1047,7 +1111,9 @@
                         }
 
                         if (darkPixels >= 3) {
-                            if (redCount >= 4 || (redCount / darkPixels) > 0.15) {
+                            if (orangeCount >= 4 && orangeCount >= redCount && (orangeCount / darkPixels) > 0.15) {
+                                color = 'orange';
+                            } else if (redCount >= 4 || (redCount / darkPixels) > 0.15) {
                                 color = 'red';
                             } else if (blueCount >= 4 || (blueCount / darkPixels) > 0.15) {
                                 color = 'blue';
@@ -1115,7 +1181,9 @@
                         } else {
                             const lead = run.text.match(/^\s*/)[0];
                             const trail = run.text.match(/\s*$/)[0];
-                            if (run.color === 'red') {
+                            if (run.color === 'orange') {
+                                lineStr += `${lead}{orange:${trimmed}}${trail}`;
+                            } else if (run.color === 'red') {
                                 lineStr += `${lead}{red:${trimmed}}${trail}`;
                             } else if (run.color === 'blue') {
                                 lineStr += `${lead}{blue:${trimmed}}${trail}`;
@@ -1250,7 +1318,7 @@
         throw new Error('PDF内に Member List, Cadence, または Play Diagram のページが見つかりませんでした。');
     }
 
-    // テキスト内の {blue:...} と {red:...} をHTMLに変換
+    // テキスト内の {blue:...}, {red:...}, {orange:...} をHTMLに変換
     function formatRichText(str) {
         const esc = String(str ?? '')
             .replace(/&/g, '&amp;')
@@ -1259,6 +1327,7 @@
         return esc
             .replace(/\{blue:([\s\S]*?)\}/g, '<span class="txt-blue">$1</span>')
             .replace(/\{red:([\s\S]*?)\}/g, '<span class="txt-red">$1</span>')
+            .replace(/\{orange:([\s\S]*?)\}/g, '<span class="txt-orange" style="color:#e57229;font-weight:700;">$1</span>')
             .replace(/\n/g, '<br>');
     }
 
