@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DV549S8BY1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-DV549S8BY1');
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Report - Scouting Report</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --card-border: #E2E8F0;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --text-light: #94A3B8;
+      --gold: #D97706;
+      --gold-dark: #B45309;
+      --run-red: #E05244;
+      --pass-blue: #3B82F6;
+      --green: #10B981;
+      --green-dark: #059669;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding: 1.5rem 1rem 60px;
+      min-height: 100vh;
+    }
+
+    /* Tendency Breaker 共通ナビ */
+    .tb-nav {
+      max-width: 1220px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 auto 1rem;
+      font-family: 'Inter', -apple-system, sans-serif;
+    }
+    .tb-nav a {
+      padding: 8px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #475569;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .tb-nav a.active {
+      background: #3b82f6;
+      color: #fff;
+      border-color: #3b82f6;
+    }
+
+    /* Page Layout */
+    .page-container {
+      max-width: 1220px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .page-title-group h1 {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: -0.02em;
+    }
+    .page-title-group p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .status-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .status-indicator .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+    }
+    .file-upload-link {
+      color: #3B82F6;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-left: 4px;
+    }
+    .file-upload-link:hover { color: #1D4ED8; }
+    .btn-reset-link {
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      border-radius: 6px;
+      padding: 4px 10px;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-reset-link:hover { background: #F1F5F9; color: var(--text-main); }
+
+    .scout-card {
+      background: #FFFFFF;
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 22px 24px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+
+    /* 3-Row Filter Bar */
+    .filter-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 22px;
+      font-size: 13.5px;
+    }
+    .filter-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+    }
+    .filter-section {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .filter-name {
+      color: #64748B;
+      font-size: 13px;
+      font-weight: 700;
+      margin-right: 3px;
+    }
+    .pill {
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      color: #334155;
+      padding: 5px 15px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.1s ease;
+      line-height: 1.2;
+    }
+    .pill:hover {
+      border-color: #94A3B8;
+      background: #F8FAFC;
+    }
+    .pill.active {
+      background: #D97706;
+      border-color: #D97706;
+      color: #FFFFFF;
+      font-weight: 700;
+    }
+
+    .tag-formation-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #FEF3C7;
+      border: 1px solid #F59E0B;
+      color: #92400E;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+    }
+    .tag-formation-pill .close {
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      margin-left: 2px;
+    }
+
+    /* 4 KPI Cards */
+    .kpi-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+    }
+    .kpi-number {
+      font-size: 32px;
+      font-weight: 800;
+      color: #0F172A;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+    }
+    .kpi-desc {
+      font-size: 12px;
+      color: #64748B;
+      font-weight: 600;
+    }
+
+    /* Insight Banner */
+    .insight-stripe {
+      border-left: 3px solid var(--gold);
+      padding: 4px 0 4px 12px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.5;
+    }
+    .insight-stripe b { color: #111827; }
+
+    /* 2x2 Tables Grid */
+    .tables-grid-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 960px) {
+      .tables-grid-box { grid-template-columns: 1fr; }
+      .kpi-container { grid-template-columns: 1fr 1fr; gap: 10px; }
+      body { padding: 12px 10px 48px; }
+      .scout-card { padding: 16px 14px; }
+    }
+
+    .table-panel-card {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      padding: 20px 22px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .th-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .th-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+      letter-spacing: -0.01em;
+    }
+    .th-meta {
+      font-size: 12px;
+      color: #64748B;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .th-legend-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      color: #475569;
+    }
+    .dot-r { width: 8px; height: 8px; border-radius: 2px; background: #E05244; }
+    .dot-p { width: 8px; height: 8px; border-radius: 2px; background: #3B82F6; }
+
+    .row-entries {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .table-entry {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      min-height: 28px;
+    }
+    .entry-label {
+      width: 145px;
+      flex-shrink: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #0F172A;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #rowsForm .entry-label {
+      width: 190px;
+      font-size: 13.5px;
+    }
+    #rowsRuns .entry-label,
+    #rowsPasses .entry-label {
+      width: 165px;
+    }
+    @media (max-width: 600px) {
+      .entry-label { width: 115px; font-size: 12.5px; }
+      #rowsForm .entry-label { width: 135px; font-size: 12.5px; }
+      #rowsRuns .entry-label,
+      #rowsPasses .entry-label { width: 125px; font-size: 12.5px; }
+      .table-panel-card { padding: 14px 12px; }
+    }
+    .clickable-entry {
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 3px 6px;
+      margin: 0 -6px;
+      transition: background 0.15s;
+    }
+    .clickable-entry:hover { background: #EEF2F6; }
+    .clickable-entry.selected { background: #FEF3C7; }
+
+    .entry-bar-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      margin: 0 10px 0 6px;
+      min-width: 60px;
+    }
+    .ratio-stack-bar {
+      width: 100%;
+      height: 24px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      background: #E2E8F0;
+    }
+    .ratio-run {
+      background-color: var(--run-red);
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      transition: width 0.2s ease;
+      overflow: hidden;
+    }
+    .ratio-pass {
+      background-color: var(--pass-blue);
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 8px;
+      height: 100%;
+      transition: width 0.2s ease;
+      overflow: hidden;
+    }
+    .ratio-run.striped {
+      background-color: #E88982;
+      background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 8px);
+    }
+    .ratio-pass.striped {
+      background-color: #7CA8EC;
+      background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 8px);
+    }
+
+    .entry-count-meta {
+      width: 82px;
+      flex-shrink: 0;
+      text-align: right;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      font-variant-numeric: tabular-nums;
+    }
+    .badge-less {
+      border: 1.5px solid #C28800;
+      background: #FFFFFF;
+      color: #B45309;
+      font-size: 10.5px;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    .single-freq-bar {
+      width: 100%;
+      height: 18px;
+      background: #E2E8F0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .single-freq-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.2s ease;
+    }
+    .fill-run { background: var(--run-red); }
+    .fill-pass { background: var(--pass-blue); }
+
+    .play-metrics {
+      width: 90px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .play-times { font-weight: 700; color: #1E293B; }
+    .play-average { color: #64748B; }
+
+    .clips-box {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #F1F5F9;
+    }
+    .clips-title {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .clips-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .clip-badge {
+      font-size: 11.5px;
+      padding: 3px 8px;
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      border-radius: 5px;
+      color: #475569;
+      font-family: monospace;
+      font-variant-numeric: tabular-nums;
+      transition: all 0.15s;
+    }
+    .clip-badge.has-diagram {
+      cursor: pointer;
+      background: #EFF6FF;
+      border-color: #93C5FD;
+      color: #1D4ED8;
+      font-weight: 700;
+    }
+    .clip-badge.has-diagram:hover {
+      background: #DBEAFE;
+      border-color: #3B82F6;
+      transform: translateY(-1px);
+    }
+    .clip-badge.more {
+      cursor: pointer;
+      background: #F1F5F9;
+      border: 1px dashed #94A3B8;
+      color: #334155;
+      font-family: inherit;
+      font-weight: 600;
+    }
+    .clip-badge.more:hover {
+      background: #E2E8F0;
+      color: #0F172A;
+    }
+
+    /* 全画面拡大モーダル（Play Diagramポップアップ） */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.86);
+      backdrop-filter: blur(4px);
+      z-index: 4000;
+      display: none;
+      flex-direction: column;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #fff;
+      padding: 8px 12px;
+      flex-shrink: 0;
+    }
+    .modal-play-info {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.4rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    .modal-img-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding: 8px 0;
+    }
+    .modal-img {
+      max-width: 98vw;
+      max-height: 80vh;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      user-select: none;
+    }
+    .modal-nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      width: 44px;
+      height: 60px;
+      border-radius: 8px;
+      font-size: 1.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .modal-nav-btn:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .modal-nav-btn.prev { left: 12px; }
+    .modal-nav-btn.next { right: 12px; }
+    .modal-bottom-bar {
+      padding: 6px 12px;
+      color: #cbd5e1;
+      font-size: 0.85rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body data-mode="viewer" data-extra-page="true">
+  <nav class="tb-nav">
+    <a href="index.html">Dashboard</a>
+    <a href="passzone.html">Pass Zone</a>
+    <a href="dd.html">Down &amp; Distance</a>
+    <a href="personnel.html">Personnel</a>
+    <a href="formation.html">Formation</a>
+    <a href="livereport.html" class="active">Live Report</a>
+    <a href="play.html">Play Diagram</a>
+    <a href="member.html">Member List</a>
+    <a href="cadence.html">Cadence</a>
+  </nav>
+
+  <!-- 共有データ自動流し込み用の隠しファイル入力（複数試合Excel対応） -->
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" multiple style="display:none">
+  <input type="file" id="pdfInput" accept=".pdf,application/pdf" multiple data-no-shared-feed="true" style="display:none">
+
+  <div class="page-container">
+    <div class="page-header">
+      <div class="page-title-group">
+        <h1>Live Report</h1>
+        <p>複数条件の掛け合わせ・フォーメーション選択によるリアルタイム傾向分析</p>
+      </div>
+      <div class="status-header">
+        <div class="status-indicator">
+          <span class="live-dot"></span>
+          <span id="liveStatusText">データ待機中...</span>
+          <span class="file-upload-link" id="btnUploadExcel">（Excelを選択）</span>
+          <span class="file-upload-link" id="btnUploadPdf">（図面PDFを追加）</span>
+        </div>
+        <button class="btn-reset-link" id="btnReset">✕ 条件リセット</button>
+      </div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="scout-card">
+      <!-- Filter Bar (3-Row Layout) -->
+      <div class="filter-bar">
+        <!-- 1行目: Game -->
+        <div class="filter-row">
+          <div class="filter-section">
+            <span class="filter-name">Game</span>
+            <div id="gamePillsBox" style="display:inline-flex;gap:4px;flex-wrap:wrap;"></div>
+          </div>
+        </div>
+
+        <!-- 2行目: Down, Distance -->
+        <div class="filter-row">
+          <div class="filter-section">
+            <span class="filter-name">Down</span>
+            <button class="pill" data-group="down" data-value="1">1st</button>
+            <button class="pill" data-group="down" data-value="2">2nd</button>
+            <button class="pill" data-group="down" data-value="3,4">3rd / 4th</button>
+          </div>
+
+          <div class="filter-section">
+            <span class="filter-name">Distance</span>
+            <button class="pill" data-group="dist" data-value="1-3">1-3</button>
+            <button class="pill" data-group="dist" data-value="4-6">4-6</button>
+            <button class="pill" data-group="dist" data-value="7+">7+</button>
+          </div>
+        </div>
+
+        <!-- 3行目: Personnel, 系統, 選択中のフォーメーション -->
+        <div class="filter-row">
+          <div class="filter-section" id="secPersonnel">
+            <span class="filter-name">Personnel</span>
+            <div id="personnelPillsBox" style="display:inline-flex;gap:4px;flex-wrap:wrap;"></div>
+          </div>
+
+          <div class="filter-section">
+            <span class="filter-name">系統</span>
+            <button class="pill" data-group="family" data-value="heavy">ヘビー</button>
+            <button class="pill" data-group="family" data-value="spread">スプレッド</button>
+          </div>
+
+          <div class="filter-section" id="wrapSelectedForm" style="display:none;">
+            <span class="filter-name">フォーメーション</span>
+            <div class="tag-formation-pill">
+              <span id="labelFormName"></span>
+              <span class="close" id="btnRemoveForm">&times;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 KPI Cards -->
+      <div class="kpi-container">
+        <div class="kpi-card">
+          <div class="kpi-number" id="kpiSnaps">0</div>
+          <div class="kpi-desc">スナップ</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-number" id="kpiRunPct">0%</div>
+          <div class="kpi-desc">ラン</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-number" id="kpiGainPerPlay">0.0</div>
+          <div class="kpi-desc">ヤード / プレー</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-number" id="kpiTopCall" style="font-size:24px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">-</div>
+          <div class="kpi-desc" id="kpiTopCallDesc">最多コール</div>
+        </div>
+      </div>
+
+      <!-- Insight Box -->
+      <div class="insight-stripe" id="insightBox">
+        Dashboardで読み込んだExcelデータがここに自動反映されます。
+      </div>
+
+      <!-- 2x2 Tables Box -->
+      <div class="tables-grid-box">
+        <!-- Card 1: Down & Distance -->
+        <div class="table-panel-card">
+          <div class="th-header">
+            <div class="th-title">ダウン&amp;ディスタンス別のラン／パス</div>
+            <div class="th-meta">
+              <span class="th-legend-dot"><span class="dot-r"></span>ラン</span>
+              <span class="th-legend-dot"><span class="dot-p"></span>パス</span>
+            </div>
+          </div>
+          <div class="row-entries" id="rowsDD"></div>
+        </div>
+
+        <!-- Card 2: Formation -->
+        <div class="table-panel-card">
+          <div class="th-header">
+            <div class="th-title">フォーメーション別</div>
+            <div class="th-meta">行をタップして絞り込み</div>
+          </div>
+          <div class="row-entries" id="rowsForm"></div>
+        </div>
+
+        <!-- Card 3: Top Runs -->
+        <div class="table-panel-card">
+          <div class="th-header">
+            <div class="th-title">上位のラン</div>
+            <div class="th-meta">回数・1回当たりヤード</div>
+          </div>
+          <div class="row-entries" id="rowsRuns"></div>
+        </div>
+
+        <!-- Card 4: Top Passes -->
+        <div class="table-panel-card">
+          <div class="th-header">
+            <div class="th-title">上位のパス</div>
+            <div class="th-meta">回数・1回当たりヤード</div>
+          </div>
+          <div class="row-entries" id="rowsPasses"></div>
+        </div>
+      </div>
+
+      <!-- Bottom Clips List -->
+      <div class="clips-box">
+        <div class="clips-title" id="clipsTitle">この表示の元になった映像</div>
+        <div class="clips-badges" id="clipsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全画面拡大モーダル（Play Diagramポップアップ） -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-top-bar">
+      <div class="modal-play-info" id="modal-play-info"></div>
+      <button type="button" class="modal-close-btn" id="modal-close-btn" aria-label="閉じる">×</button>
+    </div>
+    <div class="modal-img-container">
+      <button type="button" class="modal-nav-btn prev" id="modal-prev-btn" aria-label="前へ">‹</button>
+      <img src="" alt="Play Diagram" class="modal-img" id="modal-img">
+      <button type="button" class="modal-nav-btn next" id="modal-next-btn" aria-label="次へ">›</button>
+    </div>
+    <div class="modal-bottom-bar" id="modal-bottom-bar"></div>
+  </div>
+
+<script src="scouting-extra.js"></script>
+<script>
+"use strict";
+
+let RAW_DATA = [];
+let ALL_DIAGRAMS = [];
+let CURRENT_MODAL_LIST = [];
+let CURRENT_MODAL_INDEX = 0;
+let SHOW_ALL_CLIPS = false;
+
+function updateStatusText() {
+  const statusEl = document.getElementById("liveStatusText");
+  if (!statusEl) return;
+  if (!RAW_DATA.length && !ALL_DIAGRAMS.length) {
+    statusEl.textContent = "データ待機中...";
+    return;
+  }
+  const diagPart = ALL_DIAGRAMS.length > 0 ? ` ／ 図面 ${ALL_DIAGRAMS.length} 枚連携` : "";
+  statusEl.textContent = `ライブ集計中（全 ${RAW_DATA.length} スナップ${diagPart}）`;
+}
+
+function loadDiagrams(customExtra) {
+  if (!window.TBScoutingExtra) return;
+  const extra = window.TBScoutingExtra.getExtraData(customExtra);
+  const list = Array.isArray(extra.playDiagrams) ? extra.playDiagrams : [];
+  if (list.length > 0 || !ALL_DIAGRAMS.length) {
+    ALL_DIAGRAMS = list;
+  }
+  updateStatusText();
+}
+
+function extractCoreTeamToken(gameStr) {
+  const s = String(gameStr || "").toLowerCase().trim();
+  const vsM = s.match(/vs\.?\s*([a-z0-9\u3040-\u30ff\u4e00-\u9faf_-]+(?:\s+[a-z0-9\u3040-\u30ff\u4e00-\u9faf_-]+)?)/i);
+  if (vsM) return vsM[1].replace(/\s*#\d+.*$/, "").trim();
+  return s
+    .replace(/\b\d{6,8}\b/g, "")
+    .replace(/\b2[4-9](?:aut|spr|fall|spring)\b/gi, "")
+    .replace(/\bgame\s*\d+\b/gi, "")
+    .replace(/[()[\]#]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findMatchingDiagram(p) {
+  if (!p || !ALL_DIAGRAMS.length) return null;
+  const pNum = parseInt(String(p.play ?? "").replace(/[^0-9]/g, ""), 10);
+  if (!pNum) return null;
+
+  const candidates = ALL_DIAGRAMS.filter(d => {
+    const dNum = Number(d.playNum) || parseInt((String(d.title || d.gamePlay || "").match(/#\s*(\d+)/) || [])[1], 10);
+    return dNum === pNum;
+  });
+  if (!candidates.length) return null;
+
+  const g1 = String(p.game || "").toLowerCase().trim();
+  if (!g1) return candidates[0];
+
+  const date1Match = g1.match(/\b(\d{6})\b/);
+  const date1 = date1Match ? date1Match[1] : "";
+  const opp1 = extractCoreTeamToken(g1);
+
+  let bestCandidate = null;
+  let bestScore = 0;
+
+  for (const d of candidates) {
+    const g2 = String(d.gameName || d.gamePlay || d.title || "").toLowerCase().trim();
+    if (!g2) continue;
+
+    let score = 0;
+    if (g2 === g1 || g2.includes(g1) || g1.includes(g2)) {
+      score += 100;
+    }
+
+    const date2Match = g2.match(/\b(\d{6})\b/);
+    const date2 = date2Match ? date2Match[1] : "";
+    const opp2 = extractCoreTeamToken(g2);
+
+    if (date1 && date2 && date1 === date2) {
+      score += 80;
+    }
+    if (opp1 && opp2 && (opp1 === opp2 || opp1.includes(opp2) || opp2.includes(opp1))) {
+      score += 60;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestCandidate = d;
+    }
+  }
+
+  if (bestCandidate && bestScore > 0) return bestCandidate;
+
+  // 単一試合のみ取り込まれている場合はプレー番号一致で返す
+  const uniqueDiagramGames = new Set(ALL_DIAGRAMS.map(d => d.gameName).filter(Boolean));
+  const uniqueExcelGames = new Set(RAW_DATA.map(r => r.game).filter(Boolean));
+  if ((uniqueDiagramGames.size <= 1 || uniqueExcelGames.size <= 1) && candidates.length === 1) {
+    return candidates[0];
+  }
+  return null;
+}
+
+const FILTER_STATE = {
+  games: new Set(),
+  downs: new Set(),
+  dists: new Set(),
+  personnel: new Set(),
+  family: new Set(),
+  formation: null
+};
+
+const HEADER_KEYWORDS = ["PLAY TYPE", "OFF FORM", "FORMATION", "PERSONNEL", "HASH", "DN", "DOWN", "DIST", "OFF PLAY", "OPP TEAM"];
+
+function findHeaderRowIndex(rows) {
+  for (let i = 0; i < Math.min(rows.length, 30); i++) {
+    const cells = (rows[i] || []).map(c => String(c ?? "").trim().toUpperCase());
+    const matches = cells.filter(c => HEADER_KEYWORDS.some(w => c.includes(w))).length;
+    if (matches >= 2) return i;
+  }
+  return 0;
+}
+
+function findColumnIndex(head, matchers) {
+  for (const fn of matchers) {
+    const idx = head.findIndex(fn);
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function normalizePlayType(rawType) {
+  const v = String(rawType ?? "").trim();
+  if (!v) return "";
+  // Live Report専用ルール: RPO(Run) -> Run, RPO(Pass) -> Pass
+  if (/RUN/i.test(v)) return "Run";
+  if (/PASS/i.test(v)) return "Pass";
+  return v;
+}
+
+function parseDistValue(rawDist, rawYardLn) {
+  if (rawDist === "" || rawDist == null) return null;
+  if (typeof rawDist === "number") return isNaN(rawDist) ? null : rawDist;
+  const s = String(rawDist).trim().toLowerCase();
+  if (!s) return null;
+  if (s.includes("inch")) return 1;
+  if (s.includes("goal") || s === "g") {
+    const yl = parseFloat(rawYardLn);
+    return !isNaN(yl) && yl > 0 ? yl : 5;
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+const fileInput = document.getElementById("fileInput");
+const pdfInput = document.getElementById("pdfInput");
+const btnUploadExcel = document.getElementById("btnUploadExcel");
+const btnUploadPdf = document.getElementById("btnUploadPdf");
+const IS_VIEWER = document.body.dataset.mode === "viewer";
+
+if (IS_VIEWER) {
+  if (btnUploadExcel) btnUploadExcel.style.display = "none";
+  if (btnUploadPdf) btnUploadPdf.style.display = "none";
+} else {
+  if (btnUploadExcel) btnUploadExcel.onclick = () => fileInput.click();
+  if (btnUploadPdf && pdfInput) {
+    btnUploadPdf.onclick = () => pdfInput.click();
+    pdfInput.addEventListener("change", async e => {
+      const files = Array.from(e.target.files || []).filter(f => /\.pdf$/i.test(f.name) || f.type === "application/pdf");
+      if (!files.length || !window.TBScoutingExtra) return;
+      const statusEl = document.getElementById("liveStatusText");
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          if (statusEl) statusEl.textContent = `PDF図面解析中 (${i + 1}/${files.length}): ${f.name}...`;
+          await window.TBScoutingExtra.importFromPdfFile(f, (cur, total) => {
+            if (statusEl) statusEl.textContent = `図面変換中 (${i + 1}/${files.length}: ${f.name}) ${cur}/${total} ページ...`;
+          });
+        }
+        loadDiagrams();
+        if (RAW_DATA.length) updateClips(filterPlays());
+      } catch (err) {
+        alert("PDFの読み込みに失敗しました: " + (err.message || err));
+      } finally {
+        pdfInput.value = "";
+      }
+    });
+  }
+}
+
+fileInput.addEventListener("change", e => {
+  const files = Array.from(e.target.files || []);
+  if (files.length) handleExcelFiles(files);
+});
+
+async function handleExcelFiles(files) {
+  if (typeof XLSX === "undefined") return;
+  try {
+    const allPlays = [];
+    for (const file of files) {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data, { type: "array" });
+      const cleanName = file.name.replace(/\.[^.]+$/, "");
+
+      for (const sheetName of wb.SheetNames) {
+        const sheet = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        if (!rows.length) continue;
+
+        const hIdx = findHeaderRowIndex(rows);
+        const head = (rows[hIdx] || []).map(h => String(h ?? "").trim().toUpperCase());
+
+        const colIdx = {
+          play: findColumnIndex(head, [
+            h => h === "OF PLAY#" || h === "PLAY #" || h === "PLAY#" || h === "PLAY NO" || h === "PLAY NUMBER" || h === "#",
+            h => h.includes("PLAY#") || h.includes("PLAY #")
+          ]),
+          odk: findColumnIndex(head, [h => h === "ODK"]),
+          qtr: findColumnIndex(head, [h => h === "QTR" || h === "QUARTER"]),
+          dn: findColumnIndex(head, [h => h === "DN" || h === "DOWN"]),
+          dist: findColumnIndex(head, [h => h === "DIST" || h === "DISTANCE"]),
+          yard_ln: findColumnIndex(head, [h => h === "YARD LN" || h === "YARD LINE" || h === "YL"]),
+          hash: findColumnIndex(head, [h => h === "HASH"]),
+          personnel: findColumnIndex(head, [
+            h => h === "PERSONNEL",
+            h => h.includes("PERSONNE") || h.includes("PERSONEL")
+          ]),
+          form: findColumnIndex(head, [
+            h => h === "OFF FORM" || h === "FORMATION" || h === "フォーメーション",
+            h => h.includes("OFF FORM") || h.includes("FORMATION")
+          ]),
+          motion: findColumnIndex(head, [h => h === "MOTION"]),
+          off_play: findColumnIndex(head, [
+            h => h === "OFF PLAY" || h === "OFFPLAY" || h === "FAVORITE PLAYS" || h === "PLAY",
+            h => h.includes("OFF PLAY")
+          ]),
+          type: findColumnIndex(head, [
+            h => h === "PLAY TYPE(D)" || h === "PLAY TYPE (D)" || h === "PLAY TYPE(" || h === "PLAY TYPE(D",
+            h => h === "PLAY TYPE",
+            h => h.includes("PLAY TYPE")
+          ]),
+          result: findColumnIndex(head, [h => h === "RESULT"]),
+          gain: findColumnIndex(head, [
+            h => h === "GN/LS" || h === "GAIN" || h === "GAIN/LOSS" || h === "YARDS",
+            h => h.includes("GN/LS") || h.includes("GAIN")
+          ]),
+          opp_team: findColumnIndex(head, [
+            h => h === "OPP TEAM" || h === "OPP" || h === "OPPONENT" || h === "OPP_TEAM" || h === "GAME"
+          ]),
+          season: findColumnIndex(head, [h => h === "SEASON"])
+        };
+
+        // ヘッダー行に必須列が見つからないシートはスキップ
+        if (colIdx.type === -1 && colIdx.form === -1) continue;
+
+        let lastOpp = "";
+        let lastSeason = "";
+
+        rows.slice(hIdx + 1).forEach((r, idx) => {
+          if (!Array.isArray(r) || r.every(v => v === "" || v == null)) return;
+
+          const getVal = cIdx => {
+            if (cIdx < 0) return "";
+            const val = r[cIdx];
+            if (val == null) return "";
+            return typeof val === "string" ? val.trim() : val;
+          };
+
+          const rawType = getVal(colIdx.type);
+          const type = normalizePlayType(rawType);
+          const form = String(getVal(colIdx.form) || "").trim();
+          const off_play = String(getVal(colIdx.off_play) || "").trim();
+
+          // 空行や集計行（RunでもPassでもない行）は除外
+          if (!type && !form && !off_play) return;
+          if (type !== "Run" && type !== "Pass") return;
+
+          let oppRaw = String(getVal(colIdx.opp_team) || "").trim();
+          let seasonRaw = String(getVal(colIdx.season) || "").trim();
+          if (oppRaw) lastOpp = oppRaw;
+          else if (lastOpp) oppRaw = lastOpp;
+          if (seasonRaw) lastSeason = seasonRaw;
+          else if (lastSeason) seasonRaw = lastSeason;
+
+          let opp = oppRaw;
+          if (opp && seasonRaw && !opp.toLowerCase().includes(seasonRaw.toLowerCase()) && !/^\d{6}/.test(opp)) {
+            opp = /vs/i.test(opp) ? `${seasonRaw} ${opp}` : `${seasonRaw} vs ${opp}`;
+          }
+          if (!opp) {
+            opp = (wb.SheetNames.length > 1 ? sheetName : cleanName) || "Game";
+          }
+
+          const yardLnVal = getVal(colIdx.yard_ln);
+          const dnVal = parseInt(getVal(colIdx.dn), 10);
+          const distVal = parseDistValue(getVal(colIdx.dist), yardLnVal);
+          const gainNum = parseFloat(getVal(colIdx.gain));
+          const playNo = getVal(colIdx.play) || (idx + 1);
+
+          allPlays.push({
+            game: opp,
+            opp_team: opp,
+            play: playNo,
+            src: `${opp} #${playNo}`,
+            odk: String(getVal(colIdx.odk) || "O").toUpperCase(),
+            dn: !isNaN(dnVal) ? dnVal : null,
+            dist: distVal,
+            yard_ln: yardLnVal !== "" && !isNaN(Number(yardLnVal)) ? Number(yardLnVal) : null,
+            hash: String(getVal(colIdx.hash) || "M").toUpperCase(),
+            personnel: String(getVal(colIdx.personnel) || "").trim(),
+            form: form || "UNKNOWN",
+            off_play: off_play || "UNKNOWN",
+            type: type,
+            gain: !isNaN(gainNum) ? gainNum : 0
+          });
+        });
+      }
+    }
+
+    if (!ALL_DIAGRAMS.length) loadDiagrams();
+    setupDataset({ plays: allPlays });
+    updateStatusText();
+  } catch (err) {
+    console.error("Excel parse error:", err);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function escapeJs(s) {
+  return String(s ?? "").replace(/['\\]/g, "\\$&");
+}
+
+function initUIHandlers() {
+  document.getElementById("btnReset").onclick = () => {
+    FILTER_STATE.games.clear();
+    FILTER_STATE.downs.clear();
+    FILTER_STATE.dists.clear();
+    FILTER_STATE.personnel.clear();
+    FILTER_STATE.family.clear();
+    FILTER_STATE.formation = null;
+    syncPillStates();
+    refreshView();
+  };
+
+  document.querySelectorAll(".pill[data-group]").forEach(p => {
+    p.onclick = () => {
+      const g = p.dataset.group;
+      const v = p.dataset.value;
+      const set = g === "down" ? FILTER_STATE.downs : (g === "dist" ? FILTER_STATE.dists : FILTER_STATE.family);
+      if (set.has(v)) set.delete(v);
+      else set.add(v);
+      syncPillStates();
+      refreshView();
+    };
+  });
+
+  document.getElementById("btnRemoveForm").onclick = () => {
+    FILTER_STATE.formation = null;
+    document.getElementById("wrapSelectedForm").style.display = "none";
+    refreshView();
+  };
+}
+
+function syncPillStates() {
+  document.querySelectorAll(".pill[data-group]").forEach(p => {
+    const g = p.dataset.group;
+    const v = p.dataset.value;
+    let act = false;
+    if (g === "game") act = FILTER_STATE.games.has(v);
+    else if (g === "down") act = FILTER_STATE.downs.has(v);
+    else if (g === "dist") act = FILTER_STATE.dists.has(v);
+    else if (g === "personnel") act = FILTER_STATE.personnel.has(v);
+    else if (g === "family") act = FILTER_STATE.family.has(v);
+    p.classList.toggle("active", act);
+  });
+
+  if (FILTER_STATE.formation) {
+    document.getElementById("wrapSelectedForm").style.display = "inline-flex";
+    document.getElementById("labelFormName").textContent = FILTER_STATE.formation;
+  } else {
+    document.getElementById("wrapSelectedForm").style.display = "none";
+  }
+}
+
+function setupDataset(json) {
+  const arr = json.plays || (Array.isArray(json) ? json : []);
+  const mapped = arr.map((p, idx) => {
+    const playNum = p.play || p["OF PLAY#"] || p["PLAY #"] || (idx + 1);
+    const opp = p.opp_team || p["OPP TEAM"] || p.game || "Game";
+    const type = normalizePlayType(p.type || p["PLAY TYPE"] || "");
+    const src = p.src || (opp + " #" + playNum);
+    const gain = typeof p.gain === "number" ? p.gain : (Number(p.gain || p["GN/LS"]) || 0);
+
+    const form = String(p.form || p["OFF FORM"] || "UNKNOWN").trim();
+    const personnel = String(p.personnel || "").trim();
+    const isHeavy = /^(12|21|22|13|20)/.test(personnel) || /TE|DOUBLE|I FORM|PRO|WING/i.test(form);
+
+    return {
+      game: opp,
+      play: playNum,
+      src: src,
+      odk: String(p.odk || "O").toUpperCase(),
+      dn: p.dn ? Number(p.dn) : null,
+      dist: p.dist ? Number(p.dist) : null,
+      yard_ln: p.yard_ln !== undefined ? Number(p.yard_ln) : null,
+      hash: String(p.hash || "M").toUpperCase(),
+      personnel: personnel,
+      form: form,
+      off_play: String(p.off_play || p["OFF PLAY"] || "UNKNOWN").trim(),
+      type: type,
+      gain: gain,
+      family: isHeavy ? "heavy" : "spread"
+    };
+  });
+
+  // ODK列にDやKが混在しているデータの場合はオフェンス(Oまたは空欄)のみ対象とする
+  const hasExplicitO = mapped.some(p => p.odk === "O");
+  RAW_DATA = hasExplicitO ? mapped.filter(p => !p.odk || p.odk === "O") : mapped;
+
+  // 存在しないフィルター選択状態をクリア
+  const validGames = new Set(RAW_DATA.map(p => p.game));
+  Array.from(FILTER_STATE.games).forEach(g => { if (!validGames.has(g)) FILTER_STATE.games.delete(g); });
+  const validPers = new Set(RAW_DATA.map(p => p.personnel));
+  Array.from(FILTER_STATE.personnel).forEach(pe => { if (!validPers.has(pe)) FILTER_STATE.personnel.delete(pe); });
+
+  createGamePills();
+  createPersonnelPills();
+  syncPillStates();
+  refreshView();
+}
+
+function createGamePills() {
+  const games = [...new Set(RAW_DATA.map(p => p.game).filter(Boolean))].sort();
+  const box = document.getElementById("gamePillsBox");
+  box.innerHTML = "";
+
+  games.forEach(g => {
+    const b = document.createElement("button");
+    b.className = "pill";
+    b.dataset.group = "game";
+    b.dataset.value = g;
+    b.textContent = g;
+    b.onclick = () => {
+      if (FILTER_STATE.games.has(g)) FILTER_STATE.games.delete(g);
+      else FILTER_STATE.games.add(g);
+      syncPillStates();
+      refreshView();
+    };
+    box.appendChild(b);
+  });
+}
+
+function createPersonnelPills() {
+  const sec = document.getElementById("secPersonnel");
+  const box = document.getElementById("personnelPillsBox");
+  if (!sec || !box) return;
+
+  const rawList = [...new Set(RAW_DATA.map(p => p.personnel).filter(Boolean))];
+  if (!rawList.length) {
+    sec.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+
+  sec.style.display = "inline-flex";
+  const pList = rawList.sort((a, b) => {
+    const na = parseInt(a, 10), nb = parseInt(b, 10);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb || a.localeCompare(b);
+    return a.localeCompare(b);
+  });
+
+  box.innerHTML = "";
+  pList.forEach(p => {
+    const b = document.createElement("button");
+    b.className = "pill";
+    b.dataset.group = "personnel";
+    b.dataset.value = p;
+    b.textContent = p;
+    b.onclick = () => {
+      if (FILTER_STATE.personnel.has(p)) FILTER_STATE.personnel.delete(p);
+      else FILTER_STATE.personnel.add(p);
+      syncPillStates();
+      refreshView();
+    };
+    box.appendChild(b);
+  });
+}
+
+function filterPlays() {
+  return RAW_DATA.filter(p => {
+    if (FILTER_STATE.games.size > 0 && !FILTER_STATE.games.has(p.game)) return false;
+
+    if (FILTER_STATE.downs.size > 0) {
+      let ok = false;
+      if (FILTER_STATE.downs.has("1") && p.dn === 1) ok = true;
+      if (FILTER_STATE.downs.has("2") && p.dn === 2) ok = true;
+      if (FILTER_STATE.downs.has("3,4") && (p.dn === 3 || p.dn === 4)) ok = true;
+      if (!ok) return false;
+    }
+
+    if (FILTER_STATE.dists.size > 0) {
+      let ok = false;
+      if (FILTER_STATE.dists.has("1-3") && p.dist >= 1 && p.dist <= 3) ok = true;
+      if (FILTER_STATE.dists.has("4-6") && p.dist >= 4 && p.dist <= 6) ok = true;
+      if (FILTER_STATE.dists.has("7+") && p.dist >= 7) ok = true;
+      if (!ok) return false;
+    }
+
+    if (FILTER_STATE.personnel.size > 0 && !FILTER_STATE.personnel.has(p.personnel)) return false;
+    if (FILTER_STATE.family.size > 0 && !FILTER_STATE.family.has(p.family)) return false;
+    if (FILTER_STATE.formation && p.form !== FILTER_STATE.formation) return false;
+
+    return true;
+  });
+}
+
+function refreshView() {
+  SHOW_ALL_CLIPS = false;
+  const active = filterPlays();
+  updateKPIs(active);
+  updateInsight(active);
+  updateDDTable(active);
+  updateFormationTable(active);
+  updateTopPlays(active);
+  updateClips(active);
+}
+
+function updateKPIs(plays) {
+  const n = plays.length;
+  document.getElementById("kpiSnaps").textContent = n;
+
+  const runs = plays.filter(p => p.type === "Run").length;
+  const runPct = n ? Math.round((runs / n) * 100) : 0;
+  document.getElementById("kpiRunPct").textContent = runPct + "%";
+
+  const totalGain = plays.reduce((acc, p) => acc + p.gain, 0);
+  const avg = n ? (totalGain / n).toFixed(1) : "0.0";
+  document.getElementById("kpiGainPerPlay").textContent = avg;
+
+  const playCounts = {};
+  plays.forEach(p => {
+    if (p.off_play && p.off_play !== "UNKNOWN") {
+      playCounts[p.off_play] = (playCounts[p.off_play] || 0) + 1;
+    }
+  });
+  const sorted = Object.entries(playCounts).sort((a, b) => b[1] - a[1]);
+  if (sorted.length) {
+    document.getElementById("kpiTopCall").textContent = sorted[0][0];
+    document.getElementById("kpiTopCallDesc").textContent = `最多コール (${sorted[0][1]} 回)`;
+  } else {
+    document.getElementById("kpiTopCall").textContent = "-";
+    document.getElementById("kpiTopCallDesc").textContent = "最多コール";
+  }
+}
+
+function updateInsight(plays) {
+  const box = document.getElementById("insightBox");
+  if (!plays.length) {
+    box.innerHTML = "該当データがありません。フィルター条件を緩和するか、DashboardでExcelデータを読み込んでください。";
+    return;
+  }
+  const heavy = plays.filter(p => p.family === "heavy");
+  const spread = plays.filter(p => p.family === "spread");
+  const hRun = heavy.length ? Math.round((heavy.filter(p => p.type === "Run").length / heavy.length) * 100) : 0;
+  const sRun = spread.length ? Math.round((spread.filter(p => p.type === "Run").length / spread.length) * 100) : 0;
+
+  const playCounts = {};
+  plays.forEach(p => { if (p.off_play && p.off_play !== "UNKNOWN") playCounts[p.off_play] = (playCounts[p.off_play] || 0) + 1; });
+  const sorted = Object.entries(playCounts).sort((a, b) => b[1] - a[1]);
+  const topStr = sorted.length ? `。対策の最優先コールは <b>${escapeHtml(sorted[0][0])}</b> です。` : "。";
+
+  box.innerHTML = `この表示では、ヘビーセットからのランが <b>${hRun}%</b>、スプレッドからは <b>${sRun}%</b> です。ダウンよりフォーメーションのほうが多くを語ります${topStr}`;
+}
+
+function updateDDTable(plays) {
+  const configs = [
+    { label: "1st & 10", fn: p => p.dn === 1 && p.dist === 10 },
+    { label: "1st other", fn: p => p.dn === 1 && p.dist !== null && p.dist !== 10 },
+    { label: "2nd & short", fn: p => p.dn === 2 && p.dist !== null && p.dist <= 3 },
+    { label: "2nd & medium", fn: p => p.dn === 2 && p.dist !== null && p.dist >= 4 && p.dist <= 6 },
+    { label: "2nd & long", fn: p => p.dn === 2 && p.dist !== null && p.dist >= 7 },
+    { label: "3rd/4th & short", fn: p => (p.dn === 3 || p.dn === 4) && p.dist !== null && p.dist <= 3 },
+    { label: "3rd/4th & medium", fn: p => (p.dn === 3 || p.dn === 4) && p.dist !== null && p.dist >= 4 && p.dist <= 6 },
+    { label: "3rd/4th & long", fn: p => (p.dn === 3 || p.dn === 4) && p.dist !== null && p.dist >= 7 }
+  ];
+
+  const html = configs.map(c => {
+    const list = plays.filter(c.fn);
+    if (!list.length) return "";
+    const n = list.length;
+    const rCount = list.filter(p => p.type === "Run").length;
+    const rPct = Math.round((rCount / n) * 100);
+    const pPct = 100 - rPct;
+    const isThin = n < 10;
+    const stripedClass = isThin ? "striped" : "";
+
+    return `
+      <div class="table-entry">
+        <div class="entry-label">${c.label}</div>
+        <div class="entry-bar-container">
+          <div class="ratio-stack-bar">
+            ${rPct > 0 ? `<div class="ratio-run ${stripedClass}" style="width:${rPct}%">${rPct >= 14 ? rPct + "%" : ""}</div>` : ""}
+            ${pPct > 0 ? `<div class="ratio-pass ${stripedClass}" style="width:${pPct}%">${pPct >= 14 ? pPct + "%" : ""}</div>` : ""}
+          </div>
+        </div>
+        <div class="entry-count-meta">
+          <span>n=${n}</span>
+          ${isThin ? '<span class="badge-less">少ない</span>' : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.getElementById("rowsDD").innerHTML = html || '<div style="color:var(--text-light);font-size:12px;padding:8px 0;">データなし</div>';
+}
+
+function updateFormationTable(plays) {
+  const counts = {};
+  plays.forEach(p => { counts[p.form] = (counts[p.form] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+  const html = sorted.map(([form, n]) => {
+    const list = plays.filter(p => p.form === form);
+    const rCount = list.filter(p => p.type === "Run").length;
+    const rPct = Math.round((rCount / n) * 100);
+    const pPct = 100 - rPct;
+    const isThin = n < 10;
+    const stripedClass = isThin ? "striped" : "";
+    const isSel = FILTER_STATE.formation === form;
+
+    return `
+      <div class="table-entry clickable-entry ${isSel ? "selected" : ""}" onclick="toggleFormation('${escapeJs(form)}')">
+        <div class="entry-label" title="${escapeHtml(form)}">${escapeHtml(form)}</div>
+        <div class="entry-bar-container">
+          <div class="ratio-stack-bar">
+            ${rPct > 0 ? `<div class="ratio-run ${stripedClass}" style="width:${rPct}%">${rPct >= 14 ? rPct + "%" : ""}</div>` : ""}
+            ${pPct > 0 ? `<div class="ratio-pass ${stripedClass}" style="width:${pPct}%">${pPct >= 14 ? pPct + "%" : ""}</div>` : ""}
+          </div>
+        </div>
+        <div class="entry-count-meta">
+          <span>n=${n}</span>
+          ${isThin ? '<span class="badge-less">少ない</span>' : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.getElementById("rowsForm").innerHTML = html || '<div style="color:var(--text-light);font-size:12px;padding:8px 0;">データなし</div>';
+}
+
+window.toggleFormation = function(form) {
+  if (FILTER_STATE.formation === form) FILTER_STATE.formation = null;
+  else FILTER_STATE.formation = form;
+  syncPillStates();
+  refreshView();
+};
+
+function updateTopPlays(plays) {
+  const runs = plays.filter(p => p.type === "Run");
+  const passes = plays.filter(p => p.type === "Pass");
+  renderPlayFreq(document.getElementById("rowsRuns"), runs, "run");
+  renderPlayFreq(document.getElementById("rowsPasses"), passes, "pass");
+}
+
+function renderPlayFreq(box, list, type) {
+  const counts = {};
+  list.forEach(p => { if (p.off_play && p.off_play !== "UNKNOWN") counts[p.off_play] = (counts[p.off_play] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const maxN = sorted.length ? sorted[0][1] : 1;
+
+  box.innerHTML = sorted.map(([play, n]) => {
+    const subset = list.filter(p => p.off_play === play);
+    const avg = (subset.reduce((s, p) => s + p.gain, 0) / n).toFixed(1);
+    const pct = Math.max(5, Math.round((n / maxN) * 100));
+
+    return `
+      <div class="table-entry">
+        <div class="entry-label" title="${escapeHtml(play)}">${escapeHtml(play)}</div>
+        <div class="entry-bar-container">
+          <div class="single-freq-bar">
+            <div class="single-freq-fill ${type === "run" ? "fill-run" : "fill-pass"}" style="width:${pct}%"></div>
+          </div>
+        </div>
+        <div class="play-metrics">
+          <div class="play-times">${n}x</div>
+          <div class="play-average">平均 ${avg}</div>
+        </div>
+      </div>
+    `;
+  }).join("") || '<div style="color:var(--text-light);font-size:11px;padding:8px 0;">なし</div>';
+}
+
+let LAST_ACTIVE_PLAYS = [];
+
+function updateClips(plays) {
+  LAST_ACTIVE_PLAYS = plays;
+  const h = document.getElementById("clipsTitle");
+  const list = document.getElementById("clipsList");
+
+  // 各クリップに対応するPlay Diagram図面を検索
+  const enriched = plays.map(p => ({
+    playObj: p,
+    diagram: findMatchingDiagram(p)
+  }));
+  const withDiagrams = enriched.filter(e => e.diagram);
+  CURRENT_MODAL_LIST = withDiagrams;
+
+  const hintText = withDiagrams.length > 0 ? " — 青いバッジをタップするとプレー図面を表示します" : "";
+  h.textContent = `この表示の元になった映像 (${plays.length} クリップ)${hintText}`;
+
+  list.innerHTML = "";
+  if (!plays.length) {
+    list.innerHTML = '<span style="color:var(--text-light);font-size:11px;">クリップなし</span>';
+    return;
+  }
+
+  const limit = SHOW_ALL_CLIPS ? enriched.length : 30;
+  const visible = enriched.slice(0, limit);
+
+  visible.forEach(item => {
+    const p = item.playObj;
+    const d = item.diagram;
+    const span = document.createElement("span");
+    span.className = "clip-badge" + (d ? " has-diagram" : "");
+    span.textContent = p.src || p.play;
+    if (d) {
+      span.title = "タップしてプレー図面を表示";
+      span.onclick = () => {
+        const mIdx = CURRENT_MODAL_LIST.findIndex(x => x.diagram === d && x.playObj === p);
+        openClipModal(mIdx >= 0 ? mIdx : 0);
+      };
+    }
+    list.appendChild(span);
+  });
+
+  if (enriched.length > limit) {
+    const moreBtn = document.createElement("span");
+    moreBtn.className = "clip-badge more";
+    moreBtn.textContent = `＋ ほか ${enriched.length - limit} 件をすべて表示`;
+    moreBtn.onclick = () => {
+      SHOW_ALL_CLIPS = true;
+      updateClips(LAST_ACTIVE_PLAYS);
+    };
+    list.appendChild(moreBtn);
+  }
+}
+
+/* ==================== PLAY DIAGRAM POPUP MODAL ==================== */
+const modalOverlay = document.getElementById("modal-overlay");
+const modalImg = document.getElementById("modal-img");
+const modalPlayInfo = document.getElementById("modal-play-info");
+const modalBottomBar = document.getElementById("modal-bottom-bar");
+const modalCloseBtn = document.getElementById("modal-close-btn");
+const modalPrevBtn = document.getElementById("modal-prev-btn");
+const modalNextBtn = document.getElementById("modal-next-btn");
+
+function openClipModal(index) {
+  if (!CURRENT_MODAL_LIST[index]) return;
+  CURRENT_MODAL_INDEX = index;
+  updateClipModalContent();
+  modalOverlay.classList.add("active");
+  document.body.style.overflow = "hidden";
+}
+
+function closeClipModal() {
+  modalOverlay.classList.remove("active");
+  document.body.style.overflow = "";
+  modalImg.src = "";
+}
+
+function updateClipModalContent() {
+  const item = CURRENT_MODAL_LIST[CURRENT_MODAL_INDEX];
+  if (!item || !item.diagram) return;
+  const d = item.diagram;
+  const p = item.playObj;
+
+  modalImg.src = d.image || "";
+  const numText = d.playNum ? `#${d.playNum}` : `#${p.play}`;
+  const gameText = d.gameName || p.game || "";
+  const ddText = d.downDist || (p.dn && p.dist ? `${p.dn}-${p.dist}` : "");
+  const hashText = d.hash || p.hash || "";
+  const persText = d.personnel || p.personnel || "";
+  const formText = d.formation || p.form || "";
+  const playText = d.playName || p.off_play || "";
+  const gainText = (p && p.gain !== undefined && p.gain !== null) ? ` (${p.gain >= 0 ? "+" + p.gain : p.gain} yd)` : "";
+
+  modalPlayInfo.innerHTML = `
+    ${gameText ? `<span style="color:#6ee7b7;font-size:0.85rem;">[${escapeHtml(gameText)}]</span>` : ""}
+    <span style="color:#60a5fa;font-weight:800;">${escapeHtml(numText)}</span>
+    ${ddText ? `<span style="color:#f87171;">${escapeHtml(ddText)}</span>` : ""}
+    ${hashText ? `<span style="color:#94a3b8;font-size:0.9rem;font-weight:700;">${escapeHtml(hashText)}</span>` : ""}
+    ${persText ? `<span style="background:#4c1d95;color:#ddd6fe;font-size:0.8rem;padding:2px 7px;border-radius:4px;font-weight:800;">P:${escapeHtml(persText)}</span>` : ""}
+    ${formText ? `<span style="color:#cbd5e1;">${escapeHtml(formText)}</span>` : ""}
+    <span style="color:#fff;font-size:1.1rem;font-weight:800;">${escapeHtml(playText)}${escapeHtml(gainText)}</span>
+  `;
+  modalBottomBar.textContent = `${CURRENT_MODAL_INDEX + 1} / ${CURRENT_MODAL_LIST.length} クリップ ${d.notes ? "｜ " + d.notes : ""}`;
+}
+
+function prevClipModal() {
+  if (!CURRENT_MODAL_LIST.length) return;
+  CURRENT_MODAL_INDEX = CURRENT_MODAL_INDEX > 0 ? CURRENT_MODAL_INDEX - 1 : CURRENT_MODAL_LIST.length - 1;
+  updateClipModalContent();
+}
+
+function nextClipModal() {
+  if (!CURRENT_MODAL_LIST.length) return;
+  CURRENT_MODAL_INDEX = CURRENT_MODAL_INDEX < CURRENT_MODAL_LIST.length - 1 ? CURRENT_MODAL_INDEX + 1 : 0;
+  updateClipModalContent();
+}
+
+modalCloseBtn.addEventListener("click", closeClipModal);
+modalPrevBtn.addEventListener("click", prevClipModal);
+modalNextBtn.addEventListener("click", nextClipModal);
+modalOverlay.addEventListener("click", e => {
+  if (e.target === modalOverlay || e.target.classList.contains("modal-img-container")) {
+    closeClipModal();
+  }
+});
+
+document.addEventListener("keydown", e => {
+  if (!modalOverlay.classList.contains("active")) return;
+  if (e.key === "Escape") closeClipModal();
+  if (e.key === "ArrowLeft") prevClipModal();
+  if (e.key === "ArrowRight") nextClipModal();
+});
+
+let touchStartX = 0;
+modalOverlay.addEventListener("touchstart", e => {
+  touchStartX = e.changedTouches[0].screenX;
+}, { passive: true });
+modalOverlay.addEventListener("touchend", e => {
+  const diff = e.changedTouches[0].screenX - touchStartX;
+  if (Math.abs(diff) > 40) {
+    if (diff > 0) prevClipModal();
+    else nextClipModal();
+  }
+}, { passive: true });
+
+window.addEventListener("tb-extra-published", e => {
+  loadDiagrams(e.detail);
+  if (RAW_DATA.length) updateClips(filterPlays());
+});
+
+loadDiagrams();
+initUIHandlers();
+</script>
+<script src="menu.js"></script>
+<script src="secure-data.js"></script>
+<script src="shared-data.js"></script>
+</body>
+</html>
