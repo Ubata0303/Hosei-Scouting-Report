@@ -12,7 +12,7 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Report - Scouting Report</title>
+  <title>Dashboard - Scouting Report</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
@@ -645,13 +645,12 @@
 </head>
 <body data-mode="viewer" data-extra-page="true">
   <nav class="tb-nav">
-    <a href="index.html">Dashboard</a>
+    <a href="livereport.html" class="active">Dashboard</a>
     <a href="passzone.html">Pass Zone</a>
-    <a href="dd.html">Down &amp; Distance</a>
-    <a href="livereport.html" class="active">Live Report</a>
     <a href="play.html">Play Diagram</a>
     <a href="member.html">Member List</a>
     <a href="cadence.html">Cadence</a>
+    <a href="index.html?view=tendency">Tendency</a>
   </nav>
 
   <!-- 共有データ自動流し込み用の隠しファイル入力（複数試合Excel対応） -->
@@ -661,7 +660,7 @@
   <div class="page-container">
     <div class="page-header">
       <div class="page-title-group">
-        <h1>Live Report</h1>
+        <h1>Dashboard</h1>
         <p>複数条件の掛け合わせ・フォーメーション選択によるリアルタイム傾向分析</p>
       </div>
       <div class="status-header">
@@ -693,7 +692,8 @@
             <span class="filter-name">Down</span>
             <button class="pill" data-group="down" data-value="1">1st</button>
             <button class="pill" data-group="down" data-value="2">2nd</button>
-            <button class="pill" data-group="down" data-value="3,4">3rd / 4th</button>
+            <button class="pill" data-group="down" data-value="3">3rd</button>
+            <button class="pill" data-group="down" data-value="4">4th</button>
           </div>
 
           <div class="filter-section">
@@ -749,7 +749,7 @@
 
       <!-- Insight Box -->
       <div class="insight-stripe" id="insightBox">
-        Dashboardで読み込んだExcelデータがここに自動反映されます。
+        Tendencyで読み込んだExcelデータがここに自動反映されます。
       </div>
 
       <!-- 2x2 Tables Box -->
@@ -1318,7 +1318,8 @@ function filterPlays() {
       let ok = false;
       if (FILTER_STATE.downs.has("1") && p.dn === 1) ok = true;
       if (FILTER_STATE.downs.has("2") && p.dn === 2) ok = true;
-      if (FILTER_STATE.downs.has("3,4") && (p.dn === 3 || p.dn === 4)) ok = true;
+      if (FILTER_STATE.downs.has("3") && p.dn === 3) ok = true;
+      if (FILTER_STATE.downs.has("4") && p.dn === 4) ok = true;
       if (!ok) return false;
     }
 
@@ -1380,7 +1381,7 @@ function updateKPIs(plays) {
 function updateInsight(plays) {
   const box = document.getElementById("insightBox");
   if (!plays.length) {
-    box.innerHTML = "該当データがありません。フィルター条件を緩和するか、DashboardでExcelデータを読み込んでください。";
+    box.innerHTML = "該当データがありません。フィルター条件を緩和するか、TendencyでExcelデータを読み込んでください。";
     return;
   }
   const heavy = plays.filter(p => p.family === "heavy");
@@ -1400,12 +1401,15 @@ function updateDDTable(plays) {
   const configs = [
     { label: "1st & 10", fn: p => p.dn === 1 && p.dist === 10 },
     { label: "1st other", fn: p => p.dn === 1 && p.dist !== null && p.dist !== 10 },
-    { label: "2nd & short", fn: p => p.dn === 2 && p.dist !== null && p.dist <= 3 },
-    { label: "2nd & medium", fn: p => p.dn === 2 && p.dist !== null && p.dist >= 4 && p.dist <= 6 },
-    { label: "2nd & long", fn: p => p.dn === 2 && p.dist !== null && p.dist >= 7 },
-    { label: "3rd/4th & short", fn: p => (p.dn === 3 || p.dn === 4) && p.dist !== null && p.dist <= 3 },
-    { label: "3rd/4th & medium", fn: p => (p.dn === 3 || p.dn === 4) && p.dist !== null && p.dist >= 4 && p.dist <= 6 },
-    { label: "3rd/4th & long", fn: p => (p.dn === 3 || p.dn === 4) && p.dist !== null && p.dist >= 7 }
+    { label: "2nd & 1-3", fn: p => p.dn === 2 && p.dist !== null && p.dist <= 3 },
+    { label: "2nd & 4-6", fn: p => p.dn === 2 && p.dist !== null && p.dist >= 4 && p.dist <= 6 },
+    { label: "2nd & 7+", fn: p => p.dn === 2 && p.dist !== null && p.dist >= 7 },
+    { label: "3rd & 1-3", fn: p => p.dn === 3 && p.dist !== null && p.dist <= 3 },
+    { label: "3rd & 4-6", fn: p => p.dn === 3 && p.dist !== null && p.dist >= 4 && p.dist <= 6 },
+    { label: "3rd & 7+", fn: p => p.dn === 3 && p.dist !== null && p.dist >= 7 },
+    { label: "4th & 1-3", fn: p => p.dn === 4 && p.dist !== null && p.dist <= 3 },
+    { label: "4th & 4-6", fn: p => p.dn === 4 && p.dist !== null && p.dist >= 4 && p.dist <= 6 },
+    { label: "4th & 7+", fn: p => p.dn === 4 && p.dist !== null && p.dist >= 7 }
   ];
 
   const html = configs.map(c => {
